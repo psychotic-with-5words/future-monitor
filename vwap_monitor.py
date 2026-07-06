@@ -14,6 +14,153 @@ import io
 import wave
 import struct
 from datetime import datetime
+# ==================== 依赖库检查与自动安装 ====================
+# 此部分必须在其他所有导入之前执行
+
+import subprocess
+import sys
+import importlib
+from typing import List, Tuple
+
+# 程序所需的依赖库列表
+REQUIRED_PACKAGES = [
+    "akshare",
+    "pygame-ce",  # 安装后导入名称为 pygame
+    "schedule",
+    "psutil",
+    "requests",
+]
+
+# 安装时使用的镜像源（国内加速）
+PIP_MIRROR = "https://mirrors.aliyun.com/pypi/simple/"
+
+
+def check_package_installed(package_name: str) -> bool:
+    """
+    检查包是否已安装
+    
+    参数:
+        package_name: 包名（如 akshare）
+    
+    返回:
+        True=已安装, False=未安装
+    """
+    # 处理 pygame-ce 的特殊情况：安装包名是 pygame-ce，但导入名是 pygame
+    import_name = "pygame" if package_name == "pygame-ce" else package_name
+    
+    try:
+        importlib.import_module(import_name)
+        return True
+    except ImportError:
+        return False
+
+
+def install_package(package_name: str) -> bool:
+    """
+    安装指定的包
+    
+    参数:
+        package_name: 包名
+    
+    返回:
+        True=安装成功, False=安装失败
+    """
+    print(f"  正在安装 {package_name}...", end=" ", flush=True)
+    
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", package_name,
+             "-i", PIP_MIRROR,
+             "--trusted-host", "mirrors.aliyun.com",
+             "--disable-pip-version-check"],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        
+        if result.returncode == 0:
+            print("✓")
+            return True
+        else:
+            print("✗")
+            error_msg = result.stderr[:200] if result.stderr else "未知错误"
+            print(f"    错误: {error_msg}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("✗ (超时)")
+        return False
+    except Exception as e:
+        print(f"✗ ({e})")
+        return False
+
+
+def check_and_install_dependencies() -> bool:
+    """
+    检查并安装所有依赖库
+    
+    返回:
+        True=全部成功, False=有失败
+    """
+    print("\n" + "=" * 50)
+    print("检查程序依赖库...")
+    print("=" * 50)
+    
+    missing = []
+    
+    # 检查所有必需库
+    for package in REQUIRED_PACKAGES:
+        if check_package_installed(package):
+            print(f"  ✓ {package}")
+        else:
+            print(f"  ✗ {package} (缺失)")
+            missing.append(package)
+    
+    print("-" * 50)
+    
+    if not missing:
+        print("所有依赖库已安装 ✓")
+        print("=" * 50 + "\n")
+        return True
+    
+    print(f"缺失 {len(missing)} 个依赖库，开始自动安装...")
+    print("-" * 50)
+    
+    failed = []
+    for package in missing:
+        if install_package(package):
+            if check_package_installed(package):
+                print(f"  ✓ {package} 安装验证通过")
+            else:
+                print(f"  ✗ {package} 安装验证失败")
+                failed.append(package)
+        else:
+            failed.append(package)
+    
+    print("-" * 50)
+    
+    if failed:
+        print(f"\n以下库安装失败: {failed}")
+        print("\n请手动安装后重新运行程序：")
+        for pkg in failed:
+            print(f"  pip install {pkg}")
+        print("=" * 50 + "\n")
+        return False
+    else:
+        print("所有依赖库安装成功！")
+        print("=" * 50 + "\n")
+        return True
+
+
+# 执行依赖检查（必须在其他导入之前）
+if not check_and_install_dependencies():
+    print("依赖库安装失败，程序无法继续运行")
+    print("请检查网络连接后重试")
+    input("按 Enter 键退出...")
+    sys.exit(1)
+
+
+# ==================== 依赖检查完成，开始正常导入 ====================
 
 # 导入外部库
 import akshare

@@ -1,0 +1,10 @@
+{
+  "SYMBOLS": [
+    "AG2608",
+    "CU2607",
+    "FU2609"
+  ],
+  "CHECK_INTERVAL": 5,
+  "BATCH_DELAY": 0.3,
+  "TOLERANCE": 0.5
+}

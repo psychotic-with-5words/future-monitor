@@ -5,7 +5,7 @@
 
 # ==================== 监控配置 ====================
 # 要监控的期货合约列表
-SYMBOLS = ["AG2608", "CU2607", "FU2609"]
+SYMBOLS = ["AG2608", "CU2607", "FU2609",'J2609']
 
 # 检查间隔（秒）- 完成所有合约检查后到下一次开始的等待时间
 CHECK_INTERVAL = 5
@@ -62,12 +62,12 @@ SOUND_ENABLED = True
 
 # ----- 声音模式选择 -----
 # 声音模式: "synthesized" (合成音效) 或 "file" (自定义音频文件)
-SOUND_MODE = "synthesized"
+SOUND_MODE = "file"
 
 # ----- 自定义音频文件路径（当 SOUND_MODE = "file" 时使用）-----
 # 支持格式: WAV 文件
 # 如果文件不存在，自动回退到合成音效
-UP_ALERT_FILE = "sounds/up_alert.wav"      # 向上突破提示音文件
+UP_ALERT_FILE =  "sounds/up_alert.wav"     # 向上突破提示音文件
 DOWN_ALERT_FILE = "sounds/down_alert.wav"  # 向下突破提示音文件
 
 # ----- 向上突破音效（低于均价 → 高于均价）-----

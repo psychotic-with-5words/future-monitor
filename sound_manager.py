@@ -3,7 +3,7 @@
 
 支持两种声音模式：
 1. 合成音效 (synthesized)：使用 pygame 生成指定频率的正弦波
-2. 自定义音频文件 (file)：使用用户提供的 WAV 文件
+2. 自定义音频文件 (file)：使用用户提供的 WAV 文件（仅支持 WAV 格式）
 
 从 config.py 读取配置，不硬编码任何参数
 """
@@ -15,7 +15,7 @@ import struct
 import time
 import threading
 import os
-from typing import Optional, Dict, Any
+from typing import Optional
 
 # 尝试导入 pygame
 try:
@@ -68,7 +68,7 @@ def create_beep_wav(frequency: int, duration: float, volume: float = 0.5) -> io.
 
 def load_wav_file(file_path: str) -> Optional[pygame.mixer.Sound]:
     """
-    加载 WAV 文件
+    加载 WAV 文件（仅支持 WAV 格式）
     
     参数:
         file_path: WAV 文件路径
@@ -79,13 +79,13 @@ def load_wav_file(file_path: str) -> Optional[pygame.mixer.Sound]:
     if not PYGAME_AVAILABLE:
         return None
     
+    if not os.path.exists(file_path):
+        print(f"警告: 音频文件不存在: {file_path}")
+        return None
+    
     try:
-        if os.path.exists(file_path):
-            sound = pygame.mixer.Sound(file_path)
-            return sound
-        else:
-            print(f"警告: 音频文件不存在: {file_path}")
-            return None
+        sound = pygame.mixer.Sound(file_path)
+        return sound
     except Exception as e:
         print(f"警告: 加载音频文件失败 {file_path}: {e}")
         return None
@@ -186,8 +186,7 @@ class SoundManager:
             return None
     
     def _load_file_sound(self, file_path: str, default_frequency: int, default_duration: float) -> Optional[pygame.mixer.Sound]:
-        """加载音频文件，失败时回退到合成音效"""
-        # 尝试加载文件
+        """加载音频文件（仅支持 WAV），失败时回退到合成音效"""
         sound = load_wav_file(file_path)
         
         if sound is not None:
@@ -211,7 +210,6 @@ class SoundManager:
                 self._get_config("UP_ALERT_FREQUENCY", 1200),
                 self._get_config("UP_ALERT_DURATION", 0.4)
             )
-            # 记录使用的模式
             if self.up_sound:
                 print(f"向上突破音效: 使用文件 {file_path}")
         else:
@@ -220,7 +218,7 @@ class SoundManager:
                 self.up_sound = self._create_synthesized_sound(
                     self._get_config("UP_ALERT_FREQUENCY", 1200),
                     self._get_config("UP_ALERT_DURATION", 0.4),
-                    volume
+                    self._get_config("ALERT_VOLUME", 0.6)
                 )
                 print(f"向上突破音效: 使用合成音效 ({self._get_config('UP_ALERT_FREQUENCY', 1200)}Hz)")
             else:
@@ -247,7 +245,7 @@ class SoundManager:
                 self.down_sound = self._create_synthesized_sound(
                     self._get_config("DOWN_ALERT_FREQUENCY", 800),
                     self._get_config("DOWN_ALERT_DURATION", 0.7),
-                    volume
+                    self._get_config("ALERT_VOLUME", 0.6)
                 )
                 print(f"向下突破音效: 使用合成音效 ({self._get_config('DOWN_ALERT_FREQUENCY', 800)}Hz)")
             else:
@@ -270,7 +268,6 @@ class SoundManager:
     
     def _init_sounds(self):
         """初始化音效对象"""
-        # 检查声音总开关
         sound_enabled = self._get_config("SOUND_ENABLED", True)
         if not sound_enabled:
             self.up_sound = None
@@ -280,11 +277,8 @@ class SoundManager:
         
         print(f"声音模式: {self._get_sound_mode()}")
         
-        # 分别初始化向上和向下音效
         self._init_up_sound()
         self._init_down_sound()
-        
-        # 预热音效
         self._init_warmup()
     
     def play_up_alert(self):
@@ -312,15 +306,12 @@ class SoundManager:
             )
     
     def is_enabled(self) -> bool:
-        """检查声音功能是否可用"""
         return PYGAME_AVAILABLE and self._get_config("SOUND_ENABLED", True)
     
     def get_mode(self) -> str:
-        """获取当前声音模式"""
         return self._get_sound_mode()
     
     def play_test_sequence(self):
-        """播放测试序列"""
         if not self.is_enabled():
             print("声音功能未启用或 pygame 未安装")
             return
@@ -336,25 +327,17 @@ class SoundManager:
     
     @classmethod
     def reset_instance(cls):
-        """重置单例实例（主要用于测试）"""
         cls._instance = None
 
 
 # ==================== 便捷函数 ====================
 
 _global_sound_manager = None
-_global_config = None
 
 
 def init_sound(config_module):
-    """
-    初始化声音模块（必须在使用前调用）
-    
-    参数:
-        config_module: 配置模块（如 import config）
-    """
-    global _global_sound_manager, _global_config
-    _global_config = config_module
+    """初始化声音模块"""
+    global _global_sound_manager
     SoundManager.reset_instance()
     _global_sound_manager = SoundManager(config_module)
 
@@ -368,22 +351,18 @@ def get_sound_manager():
 
 
 def play_up_alert():
-    """播放向上突破音效"""
     get_sound_manager().play_up_alert()
 
 
 def play_down_alert():
-    """播放向下突破音效"""
     get_sound_manager().play_down_alert()
 
 
 def is_sound_enabled() -> bool:
-    """检查声音功能是否可用"""
     return get_sound_manager().is_enabled()
 
 
 def get_sound_mode() -> str:
-    """获取当前声音模式"""
     return get_sound_manager().get_mode()
 
 
@@ -398,7 +377,6 @@ if __name__ == "__main__":
         print("\n请先安装 pygame-ce:")
         print("  pip install pygame-ce")
     else:
-        # 尝试导入配置
         try:
             import config
             init_sound(config)
